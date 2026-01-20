@@ -1,0 +1,143 @@
+﻿@using NomisDbCaseStudy.Models.ViewModels
+@model NomisOverviewVm
+
+@{
+    ViewData["Title"] = "NOMIS Explorer";
+}
+
+<h1 class="mb-3">@ViewData["Title"]</h1>
+
+@if (Model?.Persons == null || !Model.Persons.Any())
+{
+    <div class="alert alert-info">
+        Não existem pessoas para mostrar (seed ainda não executado ou não há dados).
+    </div>
+}
+else
+{
+    <p class="text-muted">
+        Estrutura: <strong>Person</strong> → <strong>PersonBody</strong> → <strong>Body</strong> → <strong>BodyBodyTable</strong> → <strong>BodyTable</strong> → (conteúdo)
+    </p>
+
+    <div class="accordion" id="personsAccordion">
+        @{
+            var pIndex = 0;
+        }
+
+        @foreach (var p in Model.Persons.OrderBy(x => x.Name))
+        {
+            var personHeadingId = $"personHeading_{pIndex}";
+            var personCollapseId = $"personCollapse_{pIndex}";
+            pIndex++;
+
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="@personHeadingId">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#@personCollapseId"
+                            aria-expanded="false"
+                            aria-controls="@personCollapseId">
+                        <span class="me-2"><strong>@p.Name</strong></span>
+                        <span class="text-muted small">(@p.PersonGuid)</span>
+                        <span class="badge bg-secondary ms-3">@((p.Bodies?.Count ?? 0)) bodies</span>
+                    </button>
+                </h2>
+
+                <div id="@personCollapseId" class="accordion-collapse collapse"
+                     aria-labelledby="@personHeadingId"
+                     data-bs-parent="#personsAccordion">
+                    <div class="accordion-body">
+
+                        @if (p.Bodies == null || !p.Bodies.Any())
+                        {
+                            <div class="alert alert-warning mb-0">
+                                Esta pessoa não tem Bodies associados (PersonBody vazio).
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var b in p.Bodies.OrderBy(x => x.BodyName))
+                            {
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex flex-wrap align-items-center justify-content-between">
+                                            <div>
+                                                <div class="h5 mb-1">Body: @b.BodyName</div>
+                                                <div class="text-muted small">
+                                                    <div><strong>BodyGUID:</strong> @b.BodyGuid</div>
+                                                    <div>
+                                                        <strong>TableGUID:</strong> @(b.TableGuid == Guid.Empty ? "(não definido)" : b.TableGuid.ToString())
+                                                    </div>
+                                                    <div>
+                                                        <strong>TableName:</strong> @(string.IsNullOrWhiteSpace(b.TableName) ? "(não definido)" : b.TableName)
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="mt-2 mt-sm-0">
+                                                @{
+                                                    var currentCount = b.PersonInformationRows?.Count(x => x.FinishTime == null) ?? 0;
+                                                    var histCount = b.PersonInformationRows?.Count(x => x.FinishTime != null) ?? 0;
+                                                }
+                                                <span class="badge bg-success me-1">atuais: @currentCount</span>
+                                                <span class="badge bg-dark">histórico: @histCount</span>
+                                            </div>
+                                        </div>
+
+                                        <hr />
+
+                                        <div class="h6 mb-2">PersonInformation (conteúdo)</div>
+
+                                        @if (b.PersonInformationRows == null || !b.PersonInformationRows.Any())
+                                        {
+                                            <div class="alert alert-info mb-0">
+                                                Sem registos de PersonInformation para este BodyGUID.
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="table-responsive">
+                                                <table class="table table-sm align-middle">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>FullName</th>
+                                                            <th>StartTime (UTC)</th>
+                                                            <th>FinishTime (UTC)</th>
+                                                            <th>Estado</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach (var r in b.PersonInformationRows.OrderByDescending(x => x.StartTime))
+                                                        {
+                                                            var isCurrent = r.FinishTime == null;
+                                                            <tr>
+                                                                <td>@r.FullName</td>
+                                                                <td>@r.StartTime.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                                                <td>@(r.FinishTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "")</td>
+                                                                <td>
+                                                                    @if (isCurrent)
+                                                                    {
+                                                                        <span class="badge bg-success">atual</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="badge bg-secondary">antigo</span>
+                                                                    }
+                                                                </td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
